@@ -1,6 +1,6 @@
 # Embedded Strain Monitoring System
 
-<img src="https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/ElectronicSystem.jpg" alt="Electronic System" width="300">
+<img src="https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/WholeSystem.png" alt="Electronic System" width="300">
 
 A compact real-time strain monitoring system using a quarter-bridge strain gauge, HX711 24-bit ADC/amplifier, and an ESP32 microcontroller.
 
