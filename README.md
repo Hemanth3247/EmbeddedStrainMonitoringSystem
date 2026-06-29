@@ -1,6 +1,6 @@
 # Embedded Strain Monitoring System
 
-![Electronic System](https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/ElectronicSystem.jpg)
+<img src="https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/ElectronicSystem.jpg" alt="Electronic System" width="300">
 
 A compact real-time strain monitoring system using a quarter-bridge strain gauge, HX711 24-bit ADC/amplifier, and an ESP32 microcontroller.
 
@@ -19,8 +19,8 @@ This project measures minute deformations on a cantilever beam using a bonded qu
 - HX711 24-bit load cell amplifier (or breakout)
 - Quarter-bridge strain gauge bonded to a cantilever beam
   
-  ![Bending beam with strain gauge](https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/BendingBeam_StrainGuage.jpg)
-
+ <img src="https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/BendingBeam_StrainGuage.jpg" alt="Bending beam with strain gauge" width="300">
+ 
 - Potentiometer (10k recommended) for bridge balance
 - Excitation voltage source (usually the HX711 provides AVCC)
 - Wires, soldering tools, breadboard or PCB
@@ -50,11 +50,7 @@ Example mapping (change pins in code to match your wiring):
 
 Circuit references:
 
-![Wheatstone Bridge](https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/WheatStoneBridge_circuit2.jpg)
-
-![Amplifier Circuit](https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/AmplifierCircuit.jpg)
-
-![Wiring Example](https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/Electronic%20Wiring.jpg)
+<img src="https://raw.githubusercontent.com/Hemanth3247/EmbeddedStrainMonitoringSystem/master/Media/ElectronicSystem.jpg" alt="Wiring Example" width="300">
 
 ## Software / Libraries
 - ESP32 board support (Arduino core for ESP32) or PlatformIO with an ESP32 environment
@@ -131,10 +127,3 @@ Watch the system in action:
 
 ## Contributing
 Contributions welcome — please open issues for problems or feature requests and submit pull requests for fixes and enhancements.
-
-## License
-Choose a license (e.g., MIT). Add a LICENSE file to this repository to make your choice explicit.
-
-## Contact
-Maintainer: Hemanth3247 (GitHub)
-For questions or collaboration, open an issue or reach out via GitHub.
