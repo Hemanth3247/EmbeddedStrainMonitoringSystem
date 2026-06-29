@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scale Monitor — ESP32</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1318;
+    --bg3: #161b24;
+    --border: #1e2733;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff7f;
+    --text: #e8edf5;
+    --muted: #556070;
+    --danger: #ff4d4d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
+  }
+
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), #0066ff);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  .logo-text { font-family: sans-serif; font-size: 1.3rem; font-weight: 800; }
+  .logo-text span { color: var(--accent); }
+  .logo-sub { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 999px; font-size: 0.72rem; color: var(--muted);
+    letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); animation: blink 2s infinite; }
+  .status-dot.live { background: var(--accent3); }
+  @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+  /* Controls */
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 24px; }
+
+  .btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 9px 18px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg3); color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+    cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  select.ctrl {
+    padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg3); color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; cursor: pointer;
+  }
+
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+  .stat-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px; position: relative; overflow: hidden;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+  .stat-card:hover { border-color: rgba(0,212,255,0.25); transform: translateY(-2px); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--c, var(--accent)); opacity: 0.7;
+  }
+  .stat-card.w  { --c: var(--accent); }
+  .stat-card.r  { --c: var(--accent2); }
+  .stat-card.mx { --c: var(--accent3); }
+  .stat-card.mn { --c: #a78bfa; }
+
+  .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 10px; }
+  .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--c, var(--accent)); font-family: 'Syne', sans-serif; transition: color 0.3s; }
+  .stat-unit  { font-size: 0.7rem; color: var(--muted); margin-top: 6px; }
+  .stat-icon  { position: absolute; top: 16px; right: 16px; font-size: 1.5rem; opacity: 0.1; }
+
+  /* Charts */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .chart-title { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; }
+  .chart-badge {
+    font-size: 0.62rem; padding: 3px 8px;
+    background: rgba(0,212,255,0.1); color: var(--accent);
+    border-radius: 4px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .chart-badge.raw { background: rgba(255,107,53,0.1); color: var(--accent2); }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* Log */
+  .log-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 24px; }
+  .log-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+  .log-title { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; }
+  .log-count { font-size: 0.65rem; color: var(--muted); }
+
+  .log-table-wrap { max-height: 260px; overflow-y: auto; }
+  .log-table-wrap::-webkit-scrollbar { width: 4px; }
+  .log-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  thead th {
+    padding: 10px 22px; text-align: left; font-size: 0.62rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    background: var(--bg3); position: sticky; top: 0; border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid rgba(30,39,51,0.5); transition: background 0.15s; }
+  tbody tr:hover { background: var(--bg3); }
+  tbody tr.flash { animation: rowflash 0.7s ease; }
+  @keyframes rowflash { 0% { background: rgba(0,212,255,0.1); } 100% { background: transparent; } }
+  tbody td { padding: 11px 22px; }
+  .tw { color: var(--accent); font-weight: 600; }
+  .tr2 { color: var(--accent2); }
+  .tt { color: var(--muted); font-size: 0.7rem; }
+
+  footer { border-top: 1px solid var(--border); padding-top: 14px; text-align: center; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em; }
+
+  @keyframes vblink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  .vblink { animation: vblink 0.4s ease 2; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚖️</div>
+      <div>
+        <div class="logo-text"><span>Scale</span> Monitor</div>
+        <div class="logo-sub">ESP32 HX711 Dashboard</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot" id="dot"></div>
+      <span id="statusTxt">Connecting...</span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <select class="ctrl" id="intervalSel">
+      <option value="500">500 ms</option>
+      <option value="1000" selected>1 s</option>
+      <option value="2000">2 s</option>
+      <option value="5000">5 s</option>
+    </select>
+    <button class="btn" id="pauseBtn" onclick="togglePause()">⏸ Pause</button>
+    <button class="btn danger" onclick="clearAll()">✕ Clear</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card w">
+      <div class="stat-icon">⚖️</div>
+      <div class="stat-label">Weight</div>
+      <div class="stat-value" id="sW">—</div>
+      <div class="stat-unit">grams</div>
+    </div>
+    <div class="stat-card r">
+      <div class="stat-icon">📡</div>
+      <div class="stat-label">Raw ADC</div>
+      <div class="stat-value" id="sR">—</div>
+      <div class="stat-unit">HX711 counts</div>
+    </div>
+    <div class="stat-card mn">
+      <div class="stat-icon">📊</div>
+      <div class="stat-label">Readings</div>
+      <div class="stat-value" id="sCnt">0</div>
+      <div class="stat-unit">total</div>
+    </div>
+   </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Weight (g) over Time</div>
+        <div class="chart-badge">LIVE</div>
+      </div>
+      <div class="chart-wrap"><canvas id="wChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Raw ADC over Time</div>
+        <div class="chart-badge raw">RAW</div>
+      </div>
+      <div class="chart-wrap"><canvas id="rChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MAX = 60;
+const labels = [], wArr = [], rArr = [];
+let paused = false, timer = null, maxW = null, count = 0;
+
+const cfgBase = {
+  responsive: true, maintainAspectRatio: false,
+  animation: { duration: 200 },
+  plugins: { legend: { display: false }, tooltip: {
+    backgroundColor: '#161b24', borderColor: '#1e2733', borderWidth: 1,
+    titleColor: '#e8edf5', bodyColor: '#e8edf5',
+    titleFont: { family: 'JetBrains Mono', size: 11 },
+    bodyFont: { family: 'JetBrains Mono', size: 11 },
+  }},
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#556070', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#556070', font: { family: 'JetBrains Mono', size: 10 } } }
+  }
+};
+
+const wChart = new Chart(document.getElementById('wChart'), {
+  type: 'line',
+  data: { labels, datasets: [{ data: wArr, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.07)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#00d4ff', fill: true, tension: 0.4 }] },
+  options: { ...cfgBase }
+});
+
+const rChart = new Chart(document.getElementById('rChart'), {
+  type: 'line',
+  data: { labels: [...labels], datasets: [{ data: rArr, borderColor: '#ff6b35', backgroundColor: 'rgba(255,107,53,0.07)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#ff6b35', fill: true, tension: 0.4 }] },
+  options: { ...cfgBase }
+});
+
+async function poll() {
+  try {
+    // Calls /api/latest which the Node server proxies → FastAPI /latest
+    const res = await fetch('/api/latest', { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error();
+    const d = await res.json();
+    
+    // Handle both cases: raw object or nested response
+    const data = d.weight !== undefined ? d : d.received || d.data;
+    if (!data || data.weight === undefined) { setStatus(false, 'No data yet'); return; }
+
+    setStatus(true, 'Live');
+    const t = new Date().toLocaleTimeString('en', { hour12: false });
+
+    if (labels.length >= MAX) { labels.shift(); wArr.shift(); rArr.shift(); }
+    labels.push(t); wArr.push(data.weight); rArr.push(data.raw);
+    rChart.data.labels = [...labels];
+    wChart.update('none'); rChart.update('none');
+
+    blink('sW', data.weight.toFixed(2));
+    blink('sR', data.raw.toLocaleString());
+    count++;
+    document.getElementById('sCnt').textContent = count;
+    if (maxW === null || data.weight > maxW) { maxW = data.weight; document.getElementById('sMax').textContent = maxW.toFixed(2); }
+  } catch {
+    setStatus(false, 'Offline — is FastAPI running?');
+  }
+}
+
+function blink(id, val) {
+  const el = document.getElementById(id);
+  el.textContent = val;
+  el.classList.remove('vblink');
+  void el.offsetWidth;
+  el.classList.add('vblink');
+}
+
+function setStatus(ok, txt) {
+  document.getElementById('dot').className = 'status-dot' + (ok ? ' live' : '');
+  document.getElementById('statusTxt').textContent = txt;
+}
+
+
+
+function startTimer() {
+  poll();
+  timer = setInterval(poll, parseInt(document.getElementById('intervalSel').value));
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pauseBtn').textContent = paused ? '▶ Resume' : '⏸ Pause';
+  if (paused) { clearInterval(timer); setStatus(false, 'Paused'); }
+  else startTimer();
+}
+
+function clearAll() {
+  labels.length = 0; wArr.length = 0; rArr.length = 0;
+  count = 0; maxW = null;
+  rChart.data.labels = [];
+  wChart.update(); rChart.update();
+  ['sW','sR','sMax'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('sCnt').textContent = '0';
+}
+
+document.getElementById('intervalSel').addEventListener('change', () => {
+  if (!paused) { clearInterval(timer); startTimer(); }
+});
+
+startTimer();
+</script>
+</body>
+</html>
